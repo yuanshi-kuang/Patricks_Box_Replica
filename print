@@ -1,0 +1,9 @@
+#include<stdio.h>
+#include<Windows.h>
+#include<string.h>
+void print(char txt[100], int shi_jian)
+{
+	int i;
+	for (i = 0; txt[i] != '\0'; i++) { printf("%c", txt[i]); Sleep(shi_jian); };
+	Sleep(shi_jian + shi_jian);
+}
