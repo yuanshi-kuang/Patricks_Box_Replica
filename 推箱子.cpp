@@ -1,0 +1,569 @@
+﻿#include <iostream>
+#include <string>
+#include <vector>
+#include <graphics.h>
+#include <Windows.h>
+#pragma comment(lib,"MSIMG32.LIB")
+#pragma warning(disable : 26408)//避免使用malloc和free
+#pragma warning(disable : 4996)//scanf不安全
+#pragma warning(disable : 26493)//不要使用C样式转换
+#pragma warning(disable : 26481)//指针算法
+#pragma warning(disable : 26440)//函数可声明为noexcept
+#pragma warning(disable : 26455)//构造函数可声明为noexcept
+#pragma warning(disable : 26429)//函数可声明为not_null
+#pragma warning(disable : 6031)//忽略了scanf的返回值
+#pragma warning(disable : 26446)//建议使用gsl::at()
+#pragma warning(disable : 26482)//只使用常量表达式在数组中编制索引
+#pragma warning(disable : 26485)//没有数组要进行指针转型
+#pragma warning(disable : 26496)//变量在构造后不会变化，请将其标记为 const
+#pragma warning(disable : 26462)//仅分配一次指向*的值，请将其标记为 const 指针
+#pragma warning(disable : 28159)//考虑使用"GetTickCount64”
+#pragma warning(disable : 28251)//"WinMain”的批注不一致: 此实例包含 无批注。
+#pragma warning(disable : 26409)//避免显式调用 new和 delete
+#pragma warning(disable : 6387)//这不符合函数"WaitForSingleObject”"CloseHandle"的规范
+using namespace std;
+enum State
+{
+	null, flor, player, box, wall, pexit, bexit
+};
+enum Direction
+{
+	done0,up,down,right,left
+};
+class XY
+{
+public:
+	int x = 0, y = 0;
+	void add(int ix = 0, int iy = 0) { x += ix; y += iy;}
+	XY() {}
+	XY(int x, int y) :x(x), y(y) {}
+};
+class XYZ
+{
+public:
+	int x = 0, y = 0, z = 0;
+	void add(int ix = 0, int iy = 0, int iz = 0) { x += ix; y += iy; z += iz; }
+	XYZ() {}
+	XYZ(int x, int y) :x(x), y(y) {}
+	XYZ(int x, int y, int z) :x(x), y(y), z(z) {}
+	XYZ(XY xy) :x(xy.x), y(xy.y) {}
+};
+class WXYZ
+{
+public:
+	int w = 0, x = 0, y = 0, z = 0;
+	void add(int ix = 0, int iy = 0, int iz = 0) { x += ix; y += iy; z += iz; }
+	WXYZ() {}
+	WXYZ(int x, int y)               :x(x), y(y) {}
+	WXYZ(int x, int y, int z)        :x(x), y(y), z(z) {}
+	WXYZ(int w, int x, int y, int z) :w(w), x(x), y(y), z(z) {}
+	WXYZ(XY xy) :x(xy.x), y(xy.y) {}
+	WXYZ(XYZ xyz) :x(xyz.x), y(xyz.y), z(xyz.z) {}
+};
+//class Tree
+//{
+//public:
+//	vector<Tree*> tree;
+//	Tree* basetree;
+//	Block* atblock;
+//	Tree() { basetree = nullptr; atblock = nullptr; }
+//	void addtree(Block* block)
+//	{
+//		tree.push_back(&Tree());
+//		basetree = this;
+//		atblock = block;
+//	}
+//};
+class BlockElement
+{
+public:
+	State name = null;//名字
+	bool push = false;//推动性
+	XYZ Location = { 0,0,0 };//元素逻辑位置
+	BlockElement(){}
+	BlockElement(State Element)
+	{
+		name = Element;
+		switch (Element) 
+		{
+		case null:  push = true;  break;
+		case flor:  push = false; break;
+		case player:push = false; break;
+		case box:   push = true;  break;
+		case wall:  push = false; break;
+		case pexit: push = false; break;
+		case bexit: push = false; break;
+		default:    break;
+		}
+	}
+	BlockElement(State name, bool push) : name(name), push(push) {}
+	void del() { *this = BlockElement(null); }
+};
+class Block
+{
+public:
+	vector<BlockElement> map;
+	XYZ mapsize = { 1,1,3 };
+	BlockElement* pexitend = nullptr;//玩家终点
+	vector<BlockElement*> bexitend;//箱子终点
+	BlockElement* pat = nullptr;
+	bool havep = false;
+	Block() { map = vector<BlockElement>(mapsize.x * mapsize.y * mapsize.z); }
+	Block(string code)
+	{
+		int xnum = 0, ynum = 1, znum = 1; bool Yes = true;
+		mapsize.x = 0, mapsize.y = 1, mapsize.z = 3;
+		for (int i = 0; i < code.size(); i++)
+		{
+			if (code[i] != '|')
+			{
+				if (code[i] != '\n') { xnum++; }
+				else
+				{
+					if (mapsize.x == 0) { mapsize.x = xnum; }
+					else if (mapsize.x != 0 && mapsize.x != xnum) { std::cout << "X错误！\n"; mapsize.x = 0, mapsize.y = 1, mapsize.z = 3; Yes = false; break; }
+					xnum = 0; ynum++;
+				}
+			}
+			else
+			{
+				if (mapsize.y == 1) { mapsize.y = ynum; }
+				else if (mapsize.y != 1 && mapsize.y != ynum) { std::cout << "Y错误！\n"; mapsize.x = 0, mapsize.y = 1, mapsize.z = 3; Yes = false; break; }
+				xnum = 0; ynum = 1; znum++;
+			}
+		}
+		if (mapsize.x != 0 && mapsize.x != xnum) { std::cout << "X错误！\n"; mapsize.x = 0, mapsize.y = 1, mapsize.z = 3; Yes = false;}
+		else if (mapsize.y != 1 && mapsize.y != ynum) { std::cout << "Y错误！\n"; mapsize.x = 0, mapsize.y = 1, mapsize.z = 3; Yes = false;}
+		else if (znum > 3) { std::cout << "Z错误！\n"; mapsize.x = 0, mapsize.y = 1, mapsize.z = 3; Yes = false;}
+		mapsize.x = xnum, mapsize.y = ynum;
+		//全初始化为null
+		map = vector<BlockElement>(mapsize.x * mapsize.y * mapsize.z, null);
+		if (Yes)
+		{
+			switch (znum)
+			{
+			case 1:loading_a(code); break;
+			case 2:loading_b(code); break;
+			case 3:loading_c(code); break;
+			default:break;
+			}
+		}
+		else { mapsize.x = 0, mapsize.y = 0; }
+	}
+	void loading_a(string code)
+	{
+		//字符索引
+		int data = 0;
+		//初始化每个元素
+		for (int i = 0; i < mapsize.z; i++)
+		{
+			for (int j = 0; j < mapsize.y; j++)
+			{
+				for (int k = 0; k < mapsize.x; k++)
+				{
+					//重置地图代码索引，跳过换行
+					if (j == 0 && k == 0) { data = 0; }
+					if (code[data] == '\n') { data++; }
+					//第0层修改为背景
+					if (i == 0)
+					{
+						*maps(i, j, k) = flor;
+						maps(i, j, k)->Location = { k,j,i };
+					}
+					//第1,2层按照地图代码进行更新。
+					else if (i == 1)
+					{
+						switch (code[data])
+						{
+						case '\n':break;
+						case '0':break;
+						case '1':break;
+						case '2':break;
+						case '3':break;
+						case '4':break;
+						case '5':*maps(i, j, k) = pexit; pexitend = maps(i, j, k);          break;
+						case '6':*maps(i, j, k) = bexit; bexitend.push_back(maps(i, j, k)); break;
+						default:break;
+						}
+						maps(i, j, k)->Location = { k,j,i };
+						data++;
+					}
+					else if (i == 2)
+					{
+						switch (code[data])
+						{
+						case '\n':break;
+						case '0':*maps(i, j, k) = null;   break;
+						case '1':*maps(i, j, k) = flor;   break;
+						case '2':*maps(i, j, k) = player; havep = true; pat = maps(i, j, k); break;
+						case '3':*maps(i, j, k) = box;    break;
+						case '4':*maps(i, j, k) = wall;   break;
+						case '5':break;
+						case '6':break;
+						default:break;
+						}
+						maps(i, j, k)->Location = { k,j,i };
+						data++;
+					}
+				}
+			}
+		}
+	}
+	void loading_b(string code)
+	{
+		//字符索引
+		int data = 0;
+		//初始化每个元素
+		for (int i = 0; i < mapsize.z; i++)
+		{
+			for (int j = 0; j < mapsize.y; j++)
+			{
+				for (int k = 0; k < mapsize.x; k++)
+				{
+					//重置地图代码索引，跳过换行
+					if (j == 0 && k == 0) { data = 0; }
+					if (code[data] == '\n') { data++; }
+					//第0层
+					if (i == 0)
+					{
+						*maps(i, j, k) = flor;
+						maps(i, j, k)->Location = { k,j,i };
+					}
+					//第1层
+					else if (i == 1)
+					{
+						switch (code[data])
+						{
+						case '\n':break;
+						case '0':*maps(i, j, k) = null;   break;
+						case '1':*maps(i, j, k) = flor;   break;
+						case '2':*maps(i, j, k) = player; break;
+						case '3':*maps(i, j, k) = box;    break;
+						case '4':*maps(i, j, k) = wall;   break;
+						case '5':*maps(i, j, k) = pexit; pexitend = maps(i, j, k);          break;
+						case '6':*maps(i, j, k) = bexit; bexitend.push_back(maps(i, j, k)); break;
+						default:break;
+						}
+						maps(i, j, k)->Location = { k,j,i };
+						data++;
+					}
+					//第2层
+					else if (i == 2)
+					{
+						if (j == 0 && k == 0) { data = 0; }
+						if (code[data] == '\n') { data++; }
+						switch (code[data])
+						{
+						case '\n':break;
+						case '0':*maps(i, j, k) = null;   break;
+						case '1':*maps(i, j, k) = flor;   break;
+						case '2':*maps(i, j, k) = player; havep = true; pat = maps(i, j, k); break;
+						case '3':*maps(i, j, k) = box;    break;
+						case '4':*maps(i, j, k) = wall;   break;
+						case '5':*maps(i, j, k) = pexit;  break;
+						case '6':*maps(i, j, k) = bexit;  break;
+						default:break;
+						}
+						maps(i, j, k)->Location = { k,j,i };
+						data++;
+					}
+				}
+			}
+		}
+	}
+	void loading_c(string code)
+	{
+		//字符索引
+		int data = 0;
+		//初始化每个元素
+		for (int i = 0; i < mapsize.z; i++)
+		{
+			for (int j = 0; j < mapsize.y; j++)
+			{
+				for (int k = 0; k < mapsize.x; k++)
+				{
+					//重置地图代码索引，跳过换行
+					if (j == 0 && k == 0) { data = 0; }
+					if (code[data] == '\n') { data++; }
+					//第0层
+					if (i == 0)
+					{
+						switch (code[data])
+						{
+						case '\n':break;
+						case '0':*maps(i, j, k) = null;   break;
+						case '1':*maps(i, j, k) = flor;   break;
+						case '2':*maps(i, j, k) = player; break;
+						case '3':*maps(i, j, k) = box;    break;
+						case '4':*maps(i, j, k) = wall;   break;
+						case '5':*maps(i, j, k) = pexit;  break;
+						case '6':*maps(i, j, k) = bexit;  break;
+						default:break;
+						}
+						maps(i, j, k)->Location = { k,j,i };
+						data++;
+					}
+					//第1层
+					else if (i == 1)
+					{
+						switch (code[data])
+						{
+						case '\n':break;
+						case '0':*maps(i, j, k) = null;   break;
+						case '1':*maps(i, j, k) = flor;   break;
+						case '2':*maps(i, j, k) = player; break;
+						case '3':*maps(i, j, k) = box;    break;
+						case '4':*maps(i, j, k) = wall;   break;
+						case '5':*maps(i, j, k) = pexit; pexitend = maps(i, j, k);          break;
+						case '6':*maps(i, j, k) = bexit; bexitend.push_back(maps(i, j, k)); break;
+						default:break;
+						}
+						maps(i, j, k)->Location = { k,j,i };
+						data++;
+					}
+					//第2层
+					else if (i == 2)
+					{
+						if (j == 0 && k == 0) { data = 0; }
+						if (code[data] == '\n') { data++; }
+						switch (code[data])
+						{
+						case '\n':break;
+						case '0':*maps(i, j, k) = null;   break;
+						case '1':*maps(i, j, k) = flor;   break;
+						case '2':*maps(i, j, k) = player; havep = true; pat = maps(i, j, k); break;
+						case '3':*maps(i, j, k) = box;    break;
+						case '4':*maps(i, j, k) = wall;   break;
+						case '5':*maps(i, j, k) = pexit;  break;
+						case '6':*maps(i, j, k) = bexit;  break;
+						default:break;
+						}
+						maps(i, j, k)->Location = { k,j,i };
+						data++;
+					}
+				}
+			}
+		}
+	}
+	BlockElement* maps(int z, int y, int x) { return &map[z * (mapsize.y * mapsize.x) + y * mapsize.x + x]; }
+};
+class Level
+{
+public:
+	vector<Block> word;//世界列表
+	WXYZ pats = { 0,0,0,0 };//玩家所在位置的4维编号
+	Direction direction = Direction::down;//玩家方向
+	//Tree tier;
+	WXYZ pexitend = { -1,0,0,0 };//玩家终点
+	vector<WXYZ> bexitend;//箱子终点
+	bool victory = false;//胜利
+	bool havep = false;//有玩家
+	Level() { word = vector<Block>(0); }
+	void move(int x, int y, Direction dir)
+	{
+		if (havep)
+		{
+			Block* worddata = &word[pats.w];//关卡
+			BlockElement* wordpbedata = word[pats.w].maps(pats.z,pats.y,pats.x); //pat位置的元素
+			BlockElement* getnext = word[pats.w].maps(pats.z, pats.y + y, pats.x + x);//getnext
+			if (getnext->push)
+			{
+				//移动
+				XYZ eye = { pats.x,pats.y,pats.z };//观察位置
+				int iterate = 0;//迭代次数
+				BlockElement* data = nullptr;//缩短名称
+				eye.add(x, y);
+				iterate++;
+				while (true)//向前遍历
+				{
+					data = word[pats.w].maps(eye.z, eye.y, eye.x);
+					if (data->push && data->name != null) { eye.add(x, y); iterate++; continue; }
+					else if (!data->push) { direction = dir; return; }
+					else if (data->name == null) { iterate--; break; }
+				}
+				for (int i = iterate; i >= 0; i--)//移动
+				{
+					State name = worddata->maps(pats.z, pats.y + y * i, pats.x + x * i)->name;
+					worddata->maps(pats.z, pats.y + y * i, pats.x + x * i)->del();
+					*worddata->maps(pats.z, pats.y + y * (i + 1), pats.x + x * (i + 1)) = name;
+				}
+				pats.x += x;//更新玩家位置
+				pats.y += y;
+				direction = dir;//更新玩家方向
+				//胜利判定
+				if (pexitend.w != -1 || !bexitend.empty())
+				{
+					bool pwin = false;
+					bool bwin = false;
+					if (pexitend.w != -1)
+					{
+						BlockElement* pdata = word[pexitend.w].maps(pexitend.z + 1, pexitend.y, pexitend.x);
+						if (pdata->name == player) { pwin = true; }
+					}
+					if (!bexitend.empty())
+					{
+						int boxwin = 0;
+						for (const auto& deta : bexitend)
+						{
+							BlockElement* bdata = word[deta.w].maps(deta.z + 1, deta.y, deta.x);
+							if (bdata->name == box) { boxwin++; }
+						}
+						bwin = (boxwin == bexitend.size());
+					}
+					//不存在pexit和bexit同时没有的情况
+					//00 00 error
+					//10 00 false
+					//11 00 true //有额外的pexitend.w == -1保底
+					//10 10 false
+					//11 11 true
+					if ((pexitend.w != -1 && pwin || pexitend.w == -1) && (!bexitend.empty() && bwin || bexitend.empty())) { victory = true; }
+				}
+			}
+			else { direction = dir; }
+		}
+	}
+	void addblock(string str) 
+	{
+		word.push_back(str);
+		//集合玩家终点
+		if (word.back().pexitend != nullptr) 
+		{
+			XYZ* location = &word.back().pexitend->Location;
+			pexitend = { int(word.size()) - 1, location->x, location->y, location->z };
+		}
+		//遍历所有世界，集合所有箱子终点。
+		for (BlockElement* data : word.back().bexitend)
+		{
+			if (data != nullptr) 
+			{
+				bexitend.push_back({ int(word.size()) - 1, data->Location.x, data->Location.y, data->Location.z });
+			}
+		}
+		//更新pats位置
+		if (word.back().havep)
+		{
+			havep = true;
+			pats = word.back().pat->Location;
+		}
+	}
+	void up() { move(0, -1, Direction::up); }
+	void down() { move(0, 1, Direction::down); }
+	void left() { move(-1, 0, Direction::left); }
+	void right() { move(1, 0, Direction::right); }
+};
+inline void putimage_a(int x, int y, IMAGE* img)
+{
+	int w = img->getwidth();
+	int h = img->getheight();
+	AlphaBlend(GetImageHDC(NULL), x, y, w, h, GetImageHDC(img), 0, 0, w, h, { AC_SRC_OVER,0,255,AC_SRC_ALPHA });
+}
+inline void putimage_b(int x, int y, IMAGE* img)
+{
+	int w = img->getwidth();
+	int h = img->getheight();
+	x = x * 80 + (80 - w) / 2;
+	y = y * 80 + (80 - h) / 2;
+	AlphaBlend(GetImageHDC(NULL), x, y, w, h, GetImageHDC(img), 0, 0, w, h, { AC_SRC_OVER,0,255,AC_SRC_ALPHA });
+}
+void TopMessage(const std::wstring& title, const std::wstring& message)
+{
+	HANDLE hThread = CreateThread(NULL, 0, [](LPVOID param) -> DWORD
+		{
+			auto data = (std::pair<std::wstring, std::wstring>*)param;
+			MessageBoxW(NULL, data->second.c_str(), data->first.c_str(),MB_OK | MB_ICONINFORMATION);
+			delete data;
+			return 0;
+		}, new std::pair<std::wstring, std::wstring>(title, message), 0, NULL);
+	Sleep(100);
+	if (HWND hWnd = FindWindowW(NULL, title.c_str())){SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0,SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);}
+	WaitForSingleObject(hThread, INFINITE);
+	CloseHandle(hThread);
+}
+int main()
+{
+	//44444\n40004\n42304\n45604\n44444
+	//4444444444\n4000000004\n4023560004\n400000004\n4000000004\n4000000004\n4000000004\n4000000004\n4000000004\n4444444444
+	//0000000000\n0200000000\n0000000000\n0000000000\n0000000000\n0000000000\n0000000000\n0000000000\n0000000000\n0000000000
+	//试玩关//44444444\n44500044\n40303304\n46666664\n40330304\n44402444\n44444444
+	vector<Level> level(1);
+	level[0].addblock("44444\n40004\n42304\n45604\n44444");
+	Block* block = &level[0].word[level[0].pats.w];
+	initgraph(block->mapsize.x * 80, block->mapsize.y * 80);
+	//initgraph(block->mapsize.x * 80, block->mapsize.y * 80, EX_SHOWCONSOLE);
+	bool running = true;
+	int tick = 0;
+	ExMessage msg;
+	IMAGE flor_, box_, wall_, pexit_, bexit_, up_, down_, right_, left_;
+	loadimage(&flor_, _T("png/背景.png")    );
+	loadimage(&box_,  _T("png/箱子.png")    );
+	loadimage(&wall_, _T("png/墙.png")      );
+	loadimage(&pexit_,_T("png/玩家终点.png"));
+	loadimage(&bexit_,_T("png/箱子终点.png"));
+	loadimage(&up_,   _T("png/小人/上0.png"));
+	loadimage(&down_, _T("png/小人/下0.png"));
+	loadimage(&left_, _T("png/小人/左0.png"));
+	loadimage(&right_,_T("png/小人/右0.png"));
+	BeginBatchDraw();
+	while(running)
+	{	
+		//开始计时
+		DWORD start_time = GetTickCount();
+		//胜利检测//TopMessageBox(NULL, L"恭喜过关！", L"提示", MB_OK);
+		if (level[0].victory) { TopMessage(L"提示", L"恭喜过关！"); return 0; }
+		//数值更换
+		while (peekmessage(&msg))
+		{
+			if (msg.message == WM_KEYDOWN)
+			{
+				switch (msg.vkcode)
+				{
+				case VK_UP:   level[0].up();    break;
+				case VK_DOWN: level[0].down();  break;
+				case VK_LEFT: level[0].left();  break;
+				case VK_RIGHT:level[0].right(); break;
+				default:break;
+				}
+			}
+		}
+		//清空
+		cleardevice();
+		//渲染
+		for (int i = 0; i < block->mapsize.z; i++)
+		{
+			for (int j = 0; j < block->mapsize.y; j++)
+			{
+				for (int k = 0; k < block->mapsize.x; k++)
+				{
+					switch (block->maps(i, j, k)->name)
+					{
+					case null:  break;
+					case flor:  putimage_b(k, j, &flor_);   break;
+					case player:
+						switch (level[0].direction)
+						{
+						case Direction::up:   putimage_b(k, j, &up_);     break;
+						case Direction::down: putimage_b(k, j, &down_);   break;
+						case Direction::left: putimage_b(k, j, &left_);   break;
+						case Direction::right:putimage_b(k, j, &right_);  break;
+						default:break;
+						}break;
+					case box:   putimage_b(k, j, &box_);    break;
+					case wall:  putimage_b(k, j, &wall_);   break;
+					case pexit: putimage_b(k, j, &pexit_);  break;
+					case bexit: putimage_b(k, j, &bexit_);  break;
+					default:    break;
+					}
+				}
+			}
+		}
+		//提交
+		FlushBatchDraw();
+		//等待
+		DWORD end_time = GetTickCount();
+		DWORD delta_time = end_time - start_time;
+		if (delta_time < 1000 / 60) { Sleep(1000 / 60 - delta_time); }
+	}
+	closegraph();
+	EndBatchDraw();
+	return 0;
+}
