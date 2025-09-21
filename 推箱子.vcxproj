@@ -104,6 +104,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <DisableSpecificWarnings>26400;26408;4996;26493;26481;26440;26455;26429;6031;26446;26482;26485;26496;26462;28159;26497;26409;26401;26460;6387;26432</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -127,7 +128,23 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Block.cpp" />
+    <ClCompile Include="BlockElement.cpp" />
+    <ClCompile Include="Level.cpp" />
+    <ClCompile Include="WXYZ.cpp" />
+    <ClCompile Include="XY.cpp" />
+    <ClCompile Include="XYZ.cpp" />
     <ClCompile Include="推箱子.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Block.h" />
+    <ClInclude Include="BlockElement.h" />
+    <ClInclude Include="Direction.h" />
+    <ClInclude Include="Level.h" />
+    <ClInclude Include="State.h" />
+    <ClInclude Include="WXYZ.h" />
+    <ClInclude Include="XY.h" />
+    <ClInclude Include="XYZ.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
