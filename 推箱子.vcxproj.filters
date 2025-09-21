@@ -18,5 +18,49 @@
     <ClCompile Include="推箱子.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="XY.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="XYZ.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="WXYZ.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="BlockElement.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Block.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Level.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="State.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Direction.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="XY.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="XYZ.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="WXYZ.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="BlockElement.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Block.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Level.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
