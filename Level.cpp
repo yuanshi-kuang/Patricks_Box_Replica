@@ -134,3 +134,4 @@ void Level::right()
 {
 	move(1, 0, Direction::right); 
 }
+
