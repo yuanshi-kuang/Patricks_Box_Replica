@@ -1,3 +1,4 @@
+#pragma once  
 #include "Block.h"
 Block::Block()
 {
@@ -5,89 +6,58 @@ Block::Block()
 }
 Block::Block(const string& code)
 {
-	XYZ num{ 0,1,1 };
-	bool Yes = true;
-	mapsize = { 0,1,3 };
-	for (int i = 0; i < code.size(); i++)
+	load(code);
+}
+bool Block::load(const string& code)
+{
+	XYZ eye{ 0,1,1 };
+	XYZ mapsize_data = { 0,1,3 };
+	if (!code.empty())
 	{
-		if (code[i] != '|')
+		for (int i = 0; i < code.size(); i++)
 		{
-			if (code[i] != '\n') { num.x++; }
+			if (code[i] == '\n') { continue; }
+			if (code[i] != '|')
+			{
+				//如果没到结尾就将当前的 x 长度 +1
+				if (code[i] != ';') { eye.x++; }
+				else
+				{
+					//如果 mapsize 为第一行，则将当前 x 长度赋值
+					if (mapsize_data.x == 0) { mapsize_data.x = eye.x; }
+					//如果 mapsize 不为第一行，且上一行的长度和这行不同，就加载失败。
+					else if (mapsize_data.x != 0 && mapsize_data.x != eye.x) { return false; }
+					eye = { 0,eye.y++,eye.z };
+				}
+			}
 			else
 			{
-				if (mapsize.x == 0)
-				{
-					mapsize.x = num.x;
-				}
-				else if (mapsize.x != 0 && mapsize.x != num.x)
-				{
-					std::cout << "X错误！\n";
-					mapsize = { 0,1,3 };
-					Yes = false;
-					break;
-				}
-				num.x = 0;
-				num.y++;
+				if (mapsize_data.y == 1) { mapsize_data.y = eye.y; }
+				else if (mapsize_data.y != 1 && mapsize_data.y != eye.y) { return false; }
+				eye = { 0,1,eye.z++ };
 			}
 		}
-		else
-		{
-			if (mapsize.y == 1)
-			{
-				mapsize.y = num.y;
-			}
-			else if (mapsize.y != 1 && mapsize.y != num.y)
-			{
-				std::cout << "Y错误！\n";
-				mapsize = { 0,1,3 };
-				Yes = false;
-				break;
-			}
-			num = { 0,1,num.z++ };
-		}
+		if (mapsize_data.x != 0 && mapsize_data.x != eye.x || mapsize_data.y != 1 && mapsize_data.y != eye.y || eye.z > 3) { return false; }
+		mapsize_data.x = eye.x;
+		mapsize_data.y = eye.y;
 	}
-	if (mapsize.x != 0 && mapsize.x != num.x)
-	{
-		std::cout << "X错误！\n";
-		mapsize = { 0,1,3 };
-		Yes = false;
-	}
-	else if (mapsize.y != 1 && mapsize.y != num.y)
-	{
-		std::cout << "Y错误！\n";
-		mapsize = { 0,1,3 };
-		Yes = false;
-	}
-	else if (num.z > 3)
-	{
-		std::cout << "Z错误！\n";
-		mapsize = { 0,1,3 };
-		Yes = false;
-	}
-	mapsize.x = num.x,
-		mapsize.y = num.y;
+	else { return false; }
+	mapsize = mapsize_data;
 	//全初始化为null
 	map = vector<BlockElement>(mapsize.x * mapsize.y * mapsize.z, null);
-	if (Yes)
+	switch (eye.z)
 	{
-		switch (num.z)
-		{
-		case 1:loading_a(code); break;
-		case 2:loading_b(code); break;
-		case 3:loading_c(code); break;
-		default:break;
-		}
+	case 1:loading_a(code); break;
+	case 2:loading_b(code); break;
+	case 3:loading_c(code); break;
+	default:break;
 	}
-	else
-	{
-		mapsize.x = 0,
-			mapsize.y = 0;
-	}
+	return true;
 }
 void Block::loading_a(const string & code)
 {
 	//字符索引
-	int data = 0;
+	int eye = 0;
 	//初始化每个元素
 	for (int i = 0; i < mapsize.z; i++)
 	{
@@ -96,48 +66,48 @@ void Block::loading_a(const string & code)
 			for (int k = 0; k < mapsize.x; k++)
 			{
 				//重置地图代码索引，跳过换行
-				if (j == 0 && k == 0) { data = 0; }
-				if (code[data] == '\n') { data++; }
+				if (j == 0 && k == 0) { eye = 0; }
+				if (code[eye] == ';') { eye++; }
 				//第0层修改为背景
 				if (i == 0)
 				{
-					*maps(i, j, k) = flor;
-					maps(i, j, k)->Location = { k,j,i };
+					maps(i, j, k) = flor;
+					maps(i, j, k).Location = { k,j,i };
 				}
 				//第1,2层按照地图代码进行更新。
 				else if (i == 1)
 				{
-					switch (code[data])
+					switch (code[eye])
 					{
-					case '\n':break;
+					case ';':break;
 					case '0':break;
 					case '1':break;
 					case '2':break;
 					case '3':break;
 					case '4':break;
-					case '5':*maps(i, j, k) = pexit; pexitend = maps(i, j, k);          break;
-					case '6':*maps(i, j, k) = bexit; bexitend.push_back(maps(i, j, k)); break;
+					case '5':maps(i, j, k) = pexit; pexitend = &maps(i, j, k);          break;
+					case '6':maps(i, j, k) = bexit; bexitend.push_back(&maps(i, j, k)); break;
 					default:break;
 					}
-					maps(i, j, k)->Location = { k,j,i };
-					data++;
+					maps(i, j, k).Location = { k,j,i };
+					eye++;
 				}
 				else if (i == 2)
 				{
-					switch (code[data])
+					switch (code[eye])
 					{
-					case '\n':break;
-					case '0':*maps(i, j, k) = null;   break;
-					case '1':*maps(i, j, k) = flor;   break;
-					case '2':*maps(i, j, k) = player; havep = true; pat = maps(i, j, k); break;
-					case '3':*maps(i, j, k) = box;    break;
-					case '4':*maps(i, j, k) = wall;   break;
+					case ';':break;
+					case '0':maps(i, j, k) = null;   break;
+					case '1':maps(i, j, k) = flor;   break;
+					case '2':maps(i, j, k) = player; havep = true; pat = &maps(i, j, k); break;
+					case '3':maps(i, j, k) = box;    break;
+					case '4':maps(i, j, k) = wall;   break;
 					case '5':break;
 					case '6':break;
 					default:break;
 					}
-					maps(i, j, k)->Location = { k,j,i };
-					data++;
+					maps(i, j, k).Location = { k,j,i };
+					eye++;
 				}
 			}
 		}
@@ -146,7 +116,7 @@ void Block::loading_a(const string & code)
 void Block::loading_b(const string& code)
 {
 	//字符索引
-	int data = 0;
+	int eye = 0;
 	//初始化每个元素
 	for (int i = 0; i < mapsize.z; i++)
 	{
@@ -155,51 +125,51 @@ void Block::loading_b(const string& code)
 			for (int k = 0; k < mapsize.x; k++)
 			{
 				//重置地图代码索引，跳过换行
-				if (j == 0 && k == 0) { data = 0; }
-				if (code[data] == '\n') { data++; }
+				if (j == 0 && k == 0) { eye = 0; }
+				if (code[eye] == ';') { eye++; }
 				//第0层
 				if (i == 0)
 				{
-					*maps(i, j, k) = flor;
-					maps(i, j, k)->Location = { k,j,i };
+					maps(i, j, k) = flor;
+					maps(i, j, k).Location = { k,j,i };
 				}
 				//第1层
 				else if (i == 1)
 				{
-					switch (code[data])
+					switch (code[eye])
 					{
-					case '\n':break;
-					case '0':*maps(i, j, k) = null;   break;
-					case '1':*maps(i, j, k) = flor;   break;
-					case '2':*maps(i, j, k) = player; break;
-					case '3':*maps(i, j, k) = box;    break;
-					case '4':*maps(i, j, k) = wall;   break;
-					case '5':*maps(i, j, k) = pexit; pexitend = maps(i, j, k);          break;
-					case '6':*maps(i, j, k) = bexit; bexitend.push_back(maps(i, j, k)); break;
+					case ';':break;
+					case '0':maps(i, j, k) = null;   break;
+					case '1':maps(i, j, k) = flor;   break;
+					case '2':maps(i, j, k) = player; break;
+					case '3':maps(i, j, k) = box;    break;
+					case '4':maps(i, j, k) = wall;   break;
+					case '5':maps(i, j, k) = pexit; pexitend = &maps(i, j, k);          break;
+					case '6':maps(i, j, k) = bexit; bexitend.push_back(&maps(i, j, k)); break;
 					default:break;
 					}
-					maps(i, j, k)->Location = { k,j,i };
-					data++;
+					maps(i, j, k).Location = { k,j,i };
+					eye++;
 				}
 				//第2层
 				else if (i == 2)
 				{
-					if (j == 0 && k == 0) { data = 0; }
-					if (code[data] == '\n') { data++; }
-					switch (code[data])
+					if (j == 0 && k == 0) { eye = 0; }
+					if (code[eye] == ';') { eye++; }
+					switch (code[eye])
 					{
-					case '\n':break;
-					case '0':*maps(i, j, k) = null;   break;
-					case '1':*maps(i, j, k) = flor;   break;
-					case '2':*maps(i, j, k) = player; havep = true; pat = maps(i, j, k); break;
-					case '3':*maps(i, j, k) = box;    break;
-					case '4':*maps(i, j, k) = wall;   break;
-					case '5':*maps(i, j, k) = pexit;  break;
-					case '6':*maps(i, j, k) = bexit;  break;
+					case ';':break;
+					case '0':maps(i, j, k) = null;   break;
+					case '1':maps(i, j, k) = flor;   break;
+					case '2':maps(i, j, k) = player; havep = true; pat = &maps(i, j, k); break;
+					case '3':maps(i, j, k) = box;    break;
+					case '4':maps(i, j, k) = wall;   break;
+					case '5':maps(i, j, k) = pexit;  break;
+					case '6':maps(i, j, k) = bexit;  break;
 					default:break;
 					}
-					maps(i, j, k)->Location = { k,j,i };
-					data++;
+					maps(i, j, k).Location = { k,j,i };
+					eye++;
 				}
 			}
 		}
@@ -208,7 +178,7 @@ void Block::loading_b(const string& code)
 void Block::loading_c(const string& code)
 {
 	//字符索引
-	int data = 0;
+	int eye = 0;
 	//初始化每个元素
 	for (int i = 0; i < mapsize.z; i++)
 	{
@@ -217,69 +187,73 @@ void Block::loading_c(const string& code)
 			for (int k = 0; k < mapsize.x; k++)
 			{
 				//重置地图代码索引，跳过换行
-				if (j == 0 && k == 0) { data = 0; }
-				if (code[data] == '\n') { data++; }
+				if (j == 0 && k == 0) { eye = 0; }
+				if (code[eye] == ';') { eye++; }
 				//第0层
 				if (i == 0)
 				{
-					switch (code[data])
+					switch (code[eye])
 					{
-					case '\n':break;
-					case '0':*maps(i, j, k) = null;   break;
-					case '1':*maps(i, j, k) = flor;   break;
-					case '2':*maps(i, j, k) = player; break;
-					case '3':*maps(i, j, k) = box;    break;
-					case '4':*maps(i, j, k) = wall;   break;
-					case '5':*maps(i, j, k) = pexit;  break;
-					case '6':*maps(i, j, k) = bexit;  break;
+					case ';':break;
+					case '0':maps(i, j, k) = null;   break;
+					case '1':maps(i, j, k) = flor;   break;
+					case '2':maps(i, j, k) = player; break;
+					case '3':maps(i, j, k) = box;    break;
+					case '4':maps(i, j, k) = wall;   break;
+					case '5':maps(i, j, k) = pexit;  break;
+					case '6':maps(i, j, k) = bexit;  break;
 					default:break;
 					}
-					maps(i, j, k)->Location = { k,j,i };
-					data++;
+					maps(i, j, k).Location = { k,j,i };
+					eye++;
 				}
 				//第1层
 				else if (i == 1)
 				{
-					switch (code[data])
+					switch (code[eye])
 					{
-					case '\n':break;
-					case '0':*maps(i, j, k) = null;   break;
-					case '1':*maps(i, j, k) = flor;   break;
-					case '2':*maps(i, j, k) = player; break;
-					case '3':*maps(i, j, k) = box;    break;
-					case '4':*maps(i, j, k) = wall;   break;
-					case '5':*maps(i, j, k) = pexit; pexitend = maps(i, j, k);          break;
-					case '6':*maps(i, j, k) = bexit; bexitend.push_back(maps(i, j, k)); break;
+					case ';':break;
+					case '0':maps(i, j, k) = null;   break;
+					case '1':maps(i, j, k) = flor;   break;
+					case '2':maps(i, j, k) = player; break;
+					case '3':maps(i, j, k) = box;    break;
+					case '4':maps(i, j, k) = wall;   break;
+					case '5':maps(i, j, k) = pexit; pexitend = &maps(i, j, k);          break;
+					case '6':maps(i, j, k) = bexit; bexitend.push_back(&maps(i, j, k)); break;
 					default:break;
 					}
-					maps(i, j, k)->Location = { k,j,i };
-					data++;
+					maps(i, j, k).Location = { k,j,i };
+					eye++;
 				}
 				//第2层
 				else if (i == 2)
 				{
-					if (j == 0 && k == 0) { data = 0; }
-					if (code[data] == '\n') { data++; }
-					switch (code[data])
+					if (j == 0 && k == 0) { eye = 0; }
+					if (code[eye] == ';') { eye++; }
+					switch (code[eye])
 					{
-					case '\n':break;
-					case '0':*maps(i, j, k) = null;   break;
-					case '1':*maps(i, j, k) = flor;   break;
-					case '2':*maps(i, j, k) = player; havep = true; pat = maps(i, j, k); break;
-					case '3':*maps(i, j, k) = box;    break;
-					case '4':*maps(i, j, k) = wall;   break;
-					case '5':*maps(i, j, k) = pexit;  break;
-					case '6':*maps(i, j, k) = bexit;  break;
+					case ';':break;
+					case '0':maps(i, j, k) = null;   break;
+					case '1':maps(i, j, k) = flor;   break;
+					case '2':maps(i, j, k) = player; havep = true; pat = &maps(i, j, k); break;
+					case '3':maps(i, j, k) = box;    break;
+					case '4':maps(i, j, k) = wall;   break;
+					case '5':maps(i, j, k) = pexit;  break;
+					case '6':maps(i, j, k) = bexit;  break;
 					default:break;
 					}
-					maps(i, j, k)->Location = { k,j,i };
-					data++;
+					maps(i, j, k).Location = { k,j,i };
+					eye++;
 				}
 			}
 		}
 	}
 }
-BlockElement* Block::maps(const int& z, const int& y, const int& x) 
+BlockElement& Block::maps(const int& z, const int& y, const int& x) 
 {
-	return &map[z * (mapsize.y * mapsize.x) + y * mapsize.x + x]; 
+	return map[z * (mapsize.y * mapsize.x) + y * mapsize.x + x]; 
+}
+BlockElement& Block::maps(const int& y, const int& x)
+{
+	return map[2 * (mapsize.y * mapsize.x) + y * mapsize.x + x];
 }

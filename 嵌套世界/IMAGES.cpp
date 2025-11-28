@@ -2,7 +2,6 @@
 #include <graphics.h>
 #include <vector>
 #include <string>
-#include "Level.h"
 #pragma comment(lib,"MSIMG32.LIB")
 using namespace std;
 class IMAGES

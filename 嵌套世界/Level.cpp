@@ -1,83 +1,82 @@
+#pragma once  
 #include "Level.h"
 Level::Level()
 {
 	anim = vector<Animation>(0);
 }
-bool Level::move(const int& x, const int& y, const Direction& dir)
+Level::Level(vector<string> code)
+{
+	load(code);
+}
+Level::~Level() = default;
+bool Level::move(const int& x, const int& y, const Direction& dir) 
 {
 	if (havep)
 	{
+		//移动成功标识符
 		bool go = false;
-		//Block* worddata = &word[pats.w];//关卡
-		
-		BlockElement* wordpbedata = word[pats.w].maps(pats.z, pats.y, pats.x); //pat位置的元素
-		BlockElement* getnext = word[pats.w].maps(pats.z, pats.y + y, pats.x + x);//getnext
-		if (getnext->push)
+		//解压玩家所在地图worddata
+		Block& playerblock = *tier.findblock(pats.w);
+		//解压玩家所在元素wordpbedata
+		BlockElement& playerelement = playerblock.maps(pats.y, pats.x);
+		//将要推的元素
+		BlockElement& next =playerblock.maps(pats.y + y, pats.x + x);
+		if (next.push)
 		{
-			//基础设置
-			XYZ eye = { pats.x,pats.y,pats.z };//观察位置
-			int iterate = 0;//迭代次数
-			BlockElement* data = nullptr;//缩短名称
-			eye.XY::add(x, y);//偏移
-			iterate++;//迭代层数
-			//向前遍历
+			//眼睛位置
+			XY eye = { pats.x + x,pats.y + y };
+			//迭代次数
+			int iterate = 1;
+			//眼睛观察的元素
+			BlockElement* eyeelement = nullptr;
+			//向推动方向遍历
 			while (true)
 			{
-				data = word[pats.w].maps(eye.z, eye.y, eye.x);
-				if (data->push && data->name != null) 
+				//更新眼睛观察的元素
+				eyeelement = &playerblock.maps(eye.y, eye.x);
+				//可推且不是空
+				if (eyeelement->push && eyeelement->name != null)
 				{
-					eye.XY::add(x, y); 
-					iterate++; 
-					continue; 
+					eye.add(x, y);
+					iterate++;
+					continue;
 				}
-				else if (!data->push) 
+				//不能推
+				else if (!eyeelement->push)
 				{
-					direction = dir; 
-					return false; 
+					direction = dir;
+					return false;
 				}
-				else if (data->name == null) 
+				//空
+				else if (eyeelement->name == null)
 				{
-					iterate--; 
-					break; 
+					iterate--;
+					break;
 				}
 			}
 			//执行移动
 			for (int i = iterate; i >= 0; i--)
 			{
-				//State name = worddata->maps(pats.z, pats.y + y * i, pats.x + x * i)->name;
-				//worddata->maps(pats.z, pats.y + y * i, pats.x + x * i)->del();
-				//*worddata->maps(pats.z, pats.y + y * (i + 1), pats.x + x * (i + 1)) = name;
 				go = true;
-				*worddata->maps(pats.z, pats.y + y * (i + 1), pats.x + x * (i + 1)) = worddata->maps(pats.z, pats.y + y * i, pats.x + x * i)->name;
-				worddata->maps(pats.z, pats.y + y * i, pats.x + x * i)->del();
+				playerblock.maps(pats.y + y * (i + 1), pats.x + x * (i + 1)) = playerblock.maps(pats.y + y * i, pats.x + x * i).name;
+				playerblock.maps(pats.y + y * i, pats.x + x * i).del();
 			}
-			pats.x += x;//更新玩家位置
+			//更新玩家位置
+			pats.x += x;
 			pats.y += y;
-			direction = dir;//更新玩家方向
+			//更新玩家方向
+			direction = dir;
 			//胜利判定
+			//至少有一个玩家终点(-1表没有玩家终点) 或 至少有一个箱子终点
 			if (pexitend.w != -1 || !bexitend.empty())
 			{
 				bool pwin = false;
 				bool bwin = false;
-				if (pexitend.w != -1)
-				{
-					BlockElement* pdata = word[pexitend.w].maps(pexitend.z + 1, pexitend.y, pexitend.x);
-					if (pdata->name == player) 
-					{
-						pwin = true; 
-					}
-				}
+				if (pexitend.w != -1) { pwin = tier.findblock(pexitend.w)->maps(pexitend.z + 1, pexitend.y, pexitend.x).name == player; }
 				if (!bexitend.empty())
 				{
 					int boxwin = 0;
-					for (const auto& deta : bexitend)
-					{
-						BlockElement* bdata = word[deta.w].maps(deta.z + 1, deta.y, deta.x);
-						if (bdata->name == box) 
-						{
-							boxwin++; 
-						}
-					}
+					for (const auto& data : bexitend) { boxwin += (tier.findblock(data.w)->maps(data.z + 1, data.y, data.x).name == box); }
 					bwin = (boxwin == bexitend.size());
 				}
 				//不存在pexit和bexit同时没有的情况
@@ -86,44 +85,56 @@ bool Level::move(const int& x, const int& y, const Direction& dir)
 				//11 00 true //有额外的pexitend.w == -1保底
 				//10 10 false
 				//11 11 true
-				if ((pexitend.w != -1 && pwin || pexitend.w == -1) && (!bexitend.empty() && bwin || bexitend.empty())) 
-				{
-					victory = true; 
-				}
+				victory = (pexitend.w != -1 && pwin || pexitend.w == -1) && (!bexitend.empty() && bwin || bexitend.empty());
 			}
 			//标签更换
 
 		}
-		else 
-		{
-			direction = dir; 
-		}
+		else { direction = dir; }
 		return go;
 	}
 	return false;
 }
-void Level::addblock(const string& str)
+bool Level::load(vector<string> blockbox)
 {
-	word.push_back(str);
-	//集合玩家终点
-	if (word.back().pexitend != nullptr)
+	for (int i = 0; i < blockbox.size(); i++)
 	{
-		XYZ* location = &word.back().pexitend->Location;
-		pexitend = { int(word.size()) - 1, location->x, location->y, location->z };
+		if (!addblock(blockbox[i])) { return false; }
 	}
-	//遍历所有世界，集合所有箱子终点。
-	for (BlockElement* data : word.back().bexitend)
+	return true;
+}
+vector<string> Level::apart(string& code)
+{
+
+}
+bool Level::addblock(const string& str = "")
+{
+	//创建一个新的节点
+	Tree* tree_data = Tree::addtree(str);
+	if (tree_data == nullptr) { return false; }
+	Tree& newtree = *tree_data;
+	tree_data = nullptr;
+	//集合玩家终点
+	if (newtree.pexitend != nullptr)
 	{
-		if (data != nullptr)
+		//如果之前也存在玩家，将采用最新添加的玩家。
+		XYZ& location = newtree.pexitend->Location;
+		pexitend = { newtree.worldnum, location.x, location.y, location.z };
+	}
+	//遍历新世界，集合所有箱子终点。
+	for (BlockElement* blockelement : newtree.bexitend)
+	{
+		if (blockelement != nullptr)
 		{
-			bexitend.push_back({ int(word.size()) - 1, data->Location.x, data->Location.y, data->Location.z });
+			bexitend.push_back({ newtree.worldnum, blockelement->Location.x, blockelement->Location.y, blockelement->Location.z });
 		}
 	}
 	//更新pats位置
-	if (word.back().havep)
+	if (newtree.havep)
 	{
+		//如果之前也存在玩家，将采用最新添加的玩家。
 		havep = true;
-		pats = word.back().pat->Location;
+		pats = newtree.pat->Location;
 	}
 }
 void Level::up() 
@@ -142,27 +153,17 @@ void Level::right()
 {
 	move(1, 0, Direction::right); 
 }
-void TopMessage(const std::wstring& title, const std::wstring& message)
+void player_render(int x, int y, Direction direction, IMAGES& box)
 {
-	HANDLE hThread = CreateThread
-	(
-		NULL,
-		0,
-		[](LPVOID param) -> DWORD
-		{
-			auto data = (std::pair<std::wstring, std::wstring>*)param;
-			MessageBoxW(NULL, data->second.c_str(), data->first.c_str(), MB_OK | MB_ICONINFORMATION);
-			delete data;
-			return 0;
-		},
-		new std::pair<std::wstring, std::wstring>(title, message),
-		0,
-		NULL
-	);
-	Sleep(100);
-	if (HWND hWnd = FindWindowW(NULL, title.c_str())) { SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE); }
-	WaitForSingleObject(hThread, INFINITE);
-	CloseHandle(hThread);
+	switch (direction)
+	{
+	case Direction::done0:putimage_b(x, y, box.getimage("done"));   break;
+	case Direction::up:   putimage_b(x, y, box.getimage("up"));     break;
+	case Direction::down: putimage_b(x, y, box.getimage("down"));   break;
+	case Direction::left: putimage_b(x, y, box.getimage("left"));   break;
+	case Direction::right:putimage_b(x, y, box.getimage("right"));  break;
+	default:break;
+	}
 }
 void rendering(Level& level)
 {
@@ -170,7 +171,8 @@ void rendering(Level& level)
 	int tick = 0;
 	ExMessage msg{};
 	IMAGES box;
-	Block& block = level.word[level.pats.w];
+	//解压玩家所在的世界
+	Tree& block = *Tree::findblock(level.pats.w);
 	box.addimage(L"png/背景.png", "flor");
 	box.addimage(L"png/箱子.png", "box");
 	box.addimage(L"png/墙.png", "wall");
@@ -212,38 +214,43 @@ void rendering(Level& level)
 			{
 				for (int k = 0; k < block.mapsize.x; k++)
 				{
-					switch (block.maps(i, j, k)->name)
+					switch (block.maps(i, j, k).name)
 					{
-					case State::null:  break;
-					case State::flor:  putimage_b(k, j, box.getimage("flor")); break;
+					case State::null:  
+						break;
+					case State::flor:  
+						putimage_b(k, j, box.getimage("flor"));  
+						break;
 					case State::player:
-						switch (level.direction)
-						{
-						case Direction::done0:putimage_b(k, j, box.getimage("done"));   break;
-						case Direction::up:   putimage_b(k, j, box.getimage("up"));     break;
-						case Direction::down: putimage_b(k, j, box.getimage("down"));   break;
-						case Direction::left: putimage_b(k, j, box.getimage("left"));   break;
-						case Direction::right:putimage_b(k, j, box.getimage("right"));  break;
-						default:break;
-						}break;
-					case State::box:   putimage_b(k, j, box.getimage("box"));    break;
-					case State::wall:  putimage_b(k, j, box.getimage("wall"));   break;
-					case State::pexit: putimage_b(k, j, box.getimage("pexit"));  break;
-					case State::bexit: putimage_b(k, j, box.getimage("bexit"));  break;
-					default:    break;
+						player_render(k, j, level.direction, box); 
+						break;
+					case State::box:   
+						putimage_b(k, j, box.getimage("box"));     
+						break;
+					case State::wall:  
+						putimage_b(k, j, box.getimage("wall"));    
+						break;
+					case State::pexit: 
+						putimage_b(k, j, box.getimage("pexit"));   
+						break;
+					case State::bexit: 
+						putimage_b(k, j, box.getimage("bexit"));   
+						break;
+					default:    
+						break;
 					}
 				}
 			}
 		}
 		//第4层 tag层
-		for (int i = 0; i < block.map.size(); i++)
+		for (int i = 0; i < block.Block::map.size(); i++)
 		{
 			//完成框
-			for (int j = 0; j < block.map[i].tag.size(); j++)
+			for (int j = 0; j < block.Block::map[i].tag.size(); j++)
 			{
-				if (block.map[i].tag[j] == "win")
+				if (block.Block::map[i].tag[j] == "win")
 				{
-					XYZ& data = block.map[i].Location;
+					XYZ& data = block.Block::map[i].Location;
 					putimage_b(data.x, data.y, box.getimage("完成框"));
 				}
 			}

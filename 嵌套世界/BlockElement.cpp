@@ -17,7 +17,7 @@ public:
     {
         tag = vector<string>(0);
     }
-    BlockElement(const State &Element)
+    BlockElement(State Element)
     {
         name = Element;
         switch (Element)
