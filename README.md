@@ -58,5 +58,5 @@
 - 🧱 **墙壁**: 不可穿越的障碍物
 - 🌐 **世界方块**: 通往其他世界的通道
 ### 试玩
-- 1.0 
-- 2.0 
+- 1.0 https://github.com/user-attachments/files/22492659/default.zip
+- 2.0 https://github.com/yuanshi-kuang/Patricks_Box_Replica/releases/download/2.1.3/2.1.3Trialplay.zip
